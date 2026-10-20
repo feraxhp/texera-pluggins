@@ -1,0 +1,8 @@
+[package]
+name = "texera-pluggins"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+mynox = "0.1.3"
+texera-core = "0.99.0"
