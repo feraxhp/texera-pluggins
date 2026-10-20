@@ -2,6 +2,15 @@
 name = "texera-pluggins"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-3.0-only"
+authors = ["feraxhp <feraxhp+gh@gmail.com>"]
+description = "Plugins and extensions for the Texera editor ecosystem, ported from CodeMirror."
+homepage = "https://github.com/feraxhp/texera-pluggins"
+documentation = "https://docs.rs/texera-pluggins"
+repository = "https://github.com/feraxhp/texera-pluggins"
+readme = "README.md"
+keywords = ["editor", "codemirror", "text", "history", "plugins", "texera"]
+categories = ["text-editors"]
 
 [dependencies]
 mynox = "0.1.3"
