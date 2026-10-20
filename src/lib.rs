@@ -1,6 +1,5 @@
+#[cfg(feature = "history")]
+pub mod history;
 
-
-mod history;
-
-
+#[cfg(feature = "history")]
 pub use history::*;
