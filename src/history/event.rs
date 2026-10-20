@@ -36,8 +36,8 @@ pub struct HistEvent {
     pub changes: Option<ChangeSet>,
     pub effects: Vec<StateEffect>,
     pub mapped: Option<ChangeDesc>,
-    pub start_selection: Option<Selection>,
-    pub selections_after: Vec<Selection>,
+    pub start_selection: Option<Arc<Selection>>,
+    pub selections_after: Vec<Arc<Selection>>,
 }
 
 pub type Branch = Vec<HistEvent>;
@@ -49,8 +49,8 @@ impl HistEvent {
         changes: Option<ChangeSet>,
         effects: Vec<StateEffect>,
         mapped: Option<ChangeDesc>,
-        start_selection: Option<Selection>,
-        selections_after: Vec<Selection>,
+        start_selection: Option<Arc<Selection>>,
+        selections_after: Vec<Arc<Selection>>,
     ) -> Self {
         Self {
             changes,
@@ -61,7 +61,7 @@ impl HistEvent {
         }
     }
 
-    pub fn set_sel_after(&self, after: Vec<Selection>) -> Self {
+    pub fn set_sel_after(&self, after: Vec<Arc<Selection>>) -> Self {
         Self {
             changes: self.changes.clone(),
             effects: self.effects.clone(),
@@ -81,7 +81,9 @@ impl HistEvent {
             return None;
         }
         let inverted = tr.inverted_changes();
-        let start_sel = selection.unwrap_or_else(|| tr.start_state().selection().clone());
+        let start_sel = selection
+            .map(Arc::new)
+            .unwrap_or_else(|| Arc::new(tr.start_state().selection().clone()));
         Some(Self {
             changes: Some(inverted),
             effects,
@@ -91,7 +93,7 @@ impl HistEvent {
         })
     }
 
-    pub fn selection(selections: Vec<Selection>) -> Self {
+    pub fn selection(selections: Vec<Arc<Selection>>) -> Self {
         Self {
             changes: None,
             effects: Vec::new(),
@@ -164,7 +166,8 @@ pub fn map_effects(effects: &[StateEffect], mapping: &ChangeDesc) -> Vec<StateEf
     effects.iter().filter_map(|e| e.map(mapping)).collect()
 }
 
-pub fn add_selection(branch: &[HistEvent], selection: Selection) -> Branch {
+pub fn add_selection(branch: &[HistEvent], selection: impl Into<Arc<Selection>>) -> Branch {
+    let selection: Arc<Selection> = selection.into();
     if branch.is_empty() {
         vec![HistEvent::selection(vec![selection])]
     } else {
@@ -175,7 +178,7 @@ pub fn add_selection(branch: &[HistEvent], selection: Selection) -> Branch {
             .saturating_sub(MAX_SELECTIONS_PER_EVENT);
         let mut sels = last_event.selections_after[start..].to_vec();
         if let Some(last_sel) = sels.last() {
-            if last_sel == &selection {
+            if Arc::ptr_eq(last_sel, &selection) || last_sel.as_ref() == selection.as_ref() {
                 return branch.to_vec();
             }
         }
@@ -203,11 +206,11 @@ pub fn pop_selection(branch: &[HistEvent]) -> Branch {
 pub fn map_event(
     event: &HistEvent,
     mapping: &ChangeDesc,
-    extra_selections: &[Selection],
+    extra_selections: &[Arc<Selection>],
 ) -> Result<HistEvent, Error> {
-    let mut mapped_selections = Vec::new();
+    let mut mapped_selections = Vec::with_capacity(event.selections_after.len());
     for s in &event.selections_after {
-        mapped_selections.push(s.map(mapping, Assoc::Before)?);
+        mapped_selections.push(Arc::new(s.map(mapping, Assoc::Before)?));
     }
     let selections = conc(&mapped_selections, extra_selections);
 
@@ -219,11 +222,11 @@ pub fn map_event(
     let mapped_changes = changes.map(mapping, false)?;
     let before = mapping.map(changes, true)?;
     let full_mapping = match &event.mapped {
-        Some(m) => m.compose(&before)?,
-        None => before.clone(),
+        Some(m) => Some(m.compose(&before)?),
+        None => Some(before.clone()),
     };
     let start_selection = match &event.start_selection {
-        Some(s) => Some(s.map(&before, Assoc::Before)?),
+        Some(s) => Some(Arc::new(s.map(&before, Assoc::Before)?)),
         None => None,
     };
     let effects = map_effects(&event.effects, mapping);
@@ -231,7 +234,7 @@ pub fn map_event(
     Ok(HistEvent {
         changes: Some(mapped_changes),
         effects,
-        mapped: Some(full_mapping),
+        mapped: full_mapping,
         start_selection,
         selections_after: selections,
     })
@@ -242,7 +245,7 @@ pub fn add_mapping_to_branch(branch: &[HistEvent], mut mapping: ChangeDesc) -> B
         return Vec::new();
     }
     let mut length = branch.len();
-    let mut selections: Vec<Selection> = Vec::new();
+    let mut selections: Vec<Arc<Selection>> = Vec::new();
     while length > 0 {
         let event = match map_event(&branch[length - 1], &mapping, &selections) {
             Ok(ev) => ev,

@@ -1190,3 +1190,27 @@ fn can_restore_comments_lost_through_deletion() {
     state = command(state, undo, true);
     assert_eq!(comment_str(&state), "c1@3");
 }
+
+#[test]
+fn test_adding_1000_cursors_history_perf() {
+    let mut doc_text = String::new();
+    for i in 0..1500 {
+        doc_text.push_str(&format!("let x_{} = \"some value for testing performance with 1k cursors\";\n", i));
+    }
+    let mut state = State::from(doc_text.as_str())
+        .with_extensions([
+            AllowMultipleSelections(true).into(),
+            history(()),
+        ]);
+    let t0 = std::time::Instant::now();
+    let mut ranges = vec![Selection::cursor(0)];
+    for i in 1..=1000 {
+        let line = state.doc().line(i).unwrap();
+        ranges.push(Selection::cursor(line.from() + 4));
+        let sel = Selection::from_with_head(ranges.clone(), ranges.len() - 1).unwrap();
+        state = state.update(spec!({ selection: sel })).unwrap().into_state();
+    }
+    let elapsed = t0.elapsed();
+    assert_eq!(state.selection().ranges_ref().len(), 1001);
+    assert!(elapsed.as_millis() < 500, "Adding 1000 cursors with history took too long: {:?}", elapsed);
+}

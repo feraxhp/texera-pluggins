@@ -326,11 +326,12 @@ impl HistoryState {
 
     pub fn add_selection(
         &self,
-        selection: Selection,
+        selection: impl Into<Arc<Selection>>,
         time: u64,
         user_event: Option<&str>,
         new_group_delay: u64,
     ) -> HistoryState {
+        let selection: Arc<Selection> = selection.into();
         let last_sels = self
             .done
             .last()
@@ -341,7 +342,7 @@ impl HistoryState {
             let time_ok = time.saturating_sub(self.prev_time) < new_group_delay;
             let event_same = user_event == self.prev_user_event.as_deref();
             let event_select = user_event.map_or(false, is_select_user_event);
-            let shape_eq = eq_selection_shape(last_sels.last().unwrap(), &selection);
+            let shape_eq = eq_selection_shape(last_sels.last().unwrap().as_ref(), selection.as_ref());
             time_ok && event_same && event_select && shape_eq
         } else {
             false
@@ -384,18 +385,18 @@ impl HistoryState {
         let event = &branch[branch.len() - 1];
 
         let selection = if let Some(first_sel) = event.selections_after.first() {
-            first_sel.clone()
+            first_sel.as_ref().clone()
         } else if let (Some(start_sel), Some(changes)) = (&event.start_selection, &event.changes) {
             let inv_desc = changes.description().invert();
             start_sel
                 .map(&inv_desc, texera_core::Assoc::After)
-                .unwrap_or_else(|_| start_sel.clone())
+                .unwrap_or_else(|_| start_sel.as_ref().clone())
         } else {
             state.selection().clone()
         };
 
         if only_selection && !event.selections_after.is_empty() {
-            let sel = event.selections_after.last().unwrap().clone();
+            let sel = event.selections_after.last().unwrap().as_ref().clone();
             let rest = pop_selection(branch);
             let user_event = match side {
                 BranchName::Done => "select.undo",
@@ -435,7 +436,7 @@ impl HistoryState {
                 spec = spec.with_changes(change_specs);
             }
             if let Some(ref sel) = event.start_selection {
-                spec = spec.with_selection(sel.clone());
+                spec = spec.with_selection(sel.as_ref().clone());
             }
             let user_event = match side {
                 BranchName::Done => "undo",
