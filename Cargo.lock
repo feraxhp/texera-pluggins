@@ -32,9 +32,9 @@ checksum = "d08889ec5408683408db66ad89e0e1f93dff55c73a4ccc71c427d5b277ee47e6"
 
 [[package]]
 name = "texera-core"
-version = "0.99.0"
+version = "0.99.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b57618b05c4650c8031b91f23912d6d789a8eccb3664c52e0a03841504b8bdeb"
+checksum = "8b75c9652f355f3cddc450d097a48da63394a46d39c6b9d80901a867450bcb8b"
 dependencies = [
  "mynox",
  "ropey",
@@ -44,7 +44,7 @@ dependencies = [
 
 [[package]]
 name = "texera-pluggins"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "mynox",
  "texera-core",

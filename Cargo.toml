@@ -1,6 +1,6 @@
 [package]
 name = "texera-pluggins"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "GPL-3.0-only"
 authors = ["feraxhp <feraxhp+gh@gmail.com>"]
@@ -14,7 +14,7 @@ categories = ["text-editors"]
 
 [dependencies]
 mynox = "0.1.3"
-texera-core = "0.99.0"
+texera-core = "0.99.1"
 
 [features]
 default = []

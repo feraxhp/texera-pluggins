@@ -1214,3 +1214,32 @@ fn test_adding_1000_cursors_history_perf() {
     assert_eq!(state.selection().ranges_ref().len(), 1001);
     assert!(elapsed.as_millis() < 500, "Adding 1000 cursors with history took too long: {:?}", elapsed);
 }
+
+#[test]
+fn test_insert_1000_cursors_perf() {
+    let mut doc_text = String::new();
+    for i in 0..1500 {
+        doc_text.push_str(&format!("let x_{} = \"some value for testing performance with 1k cursors\";\n", i));
+    }
+    let mut state = State::from(doc_text.as_str())
+        .with_extensions([
+            AllowMultipleSelections(true).into(),
+            history(()),
+        ]);
+
+    let mut ranges = Vec::with_capacity(1000);
+    for i in 0..1000 {
+        let line = state.doc().line(i).unwrap();
+        ranges.push(Selection::cursor(line.from() + 4));
+    }
+    let sel = Selection::from_with_head(ranges, 0).unwrap();
+    state = state.update(spec!({ selection: sel })).unwrap().into_state();
+
+    let insert_spec = state.replace_selection("z");
+    let t_insert = std::time::Instant::now();
+    state = state.update(insert_spec).unwrap().into_state();
+    let elapsed = t_insert.elapsed();
+
+    assert_eq!(state.selection().ranges_ref().len(), 1000);
+    assert!(elapsed.as_millis() < 100, "Inserting across 1000 cursors took too long: {:?}", elapsed);
+}
